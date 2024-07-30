@@ -1,4 +1,7 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
+import { createOrEditCabin } from "../../services/apiCabins.js";
+import toast from "react-hot-toast";
 
 import Form from "../../ui/Form";
 import FormRow from "../../ui/FormRow.jsx";
@@ -7,13 +10,8 @@ import Button from "../../ui/Button";
 import FileInput from "../../ui/FileInput";
 import Textarea from "../../ui/Textarea";
 
-import { useCreateCabin } from "./useCreateCabin.js";
-import { useEditCabin } from "./useEditCabin.js";
-
 function CreateCabinForm({ cabinToEdit = {} }) {
   const { id: editId, ...editValues } = cabinToEdit;
-  const { isCreating, createCabin } = useCreateCabin();
-  const { isEditing, editCabin } = useEditCabin();
 
   const isEditSession = Boolean(editId);
 
@@ -21,9 +19,32 @@ function CreateCabinForm({ cabinToEdit = {} }) {
     defaultValues: isEditSession ? editValues : {},
   }); // getValues - retreives values from inputs inside react hook form
 
-  const isWorking = isCreating || isEditing;
-
   const { errors } = formState;
+
+  const queryClient = useQueryClient();
+
+  const { mutate: createCabin, isLoading: isCreating } = useMutation({
+    mutationFn: createOrEditCabin,
+    onSuccess: () => {
+      toast.success("Cabin created successfully");
+      queryClient.invalidateQueries({ queryKey: "cabins" });
+      reset();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const { mutate: editCabin, isLoading: isEditing } = useMutation({
+    mutationFn: ({ newCabinData, id }) => createOrEditCabin(newCabinData, id),
+    onSuccess: (data) => {
+      toast.success("Cabin created successfully");
+      queryClient.invalidateQueries({ queryKey: "cabins" });
+      reset(data);
+      // reset(getValues());
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  const isWorking = isCreating || isEditing;
 
   function onSubmit(data) {
     // const image = typeof data.image === "string" ? data.image : data.image[0];
@@ -33,17 +54,9 @@ function CreateCabinForm({ cabinToEdit = {} }) {
         : cabinToEdit.image;
 
     if (isEditSession) {
-      editCabin(
-        { newCabinData: { ...data, image }, id: editId },
-        {
-          onSuccess: (data) => {
-            console.log(data);
-            reset(data);
-          },
-        },
-      );
+      editCabin({ newCabinData: { ...data, image }, id: editId });
     } else {
-      createCabin({ ...data, image: image }, { onSuccess: () => reset() });
+      createCabin({ ...data, image: image });
     }
   }
 
