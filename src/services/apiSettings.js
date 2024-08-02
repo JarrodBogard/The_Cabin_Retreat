@@ -7,6 +7,8 @@ export async function getSettings() {
     console.error(error);
     throw new Error("Settings could not be loaded");
   }
+
+  // return data[0] // without "single" supabase fn use this return
   return data;
 }
 
